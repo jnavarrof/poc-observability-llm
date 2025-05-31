@@ -1,0 +1,18 @@
+fastapi
+uvicorn
+python-dotenv
+pyroscope-io
+
+# OpenTelemetry core + OTLP exporter
+opentelemetry-api==1.25.0
+opentelemetry-sdk==1.25.0
+opentelemetry-exporter-otlp==1.25.0
+
+# Instrumentations
+opentelemetry-instrumentation==0.46b0
+opentelemetry-instrumentation-requests==0.46b0
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-openai
+
+# OpenAI client
+openai

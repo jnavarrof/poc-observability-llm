@@ -1,0 +1,88 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+livedebugging {
+  enabled = true
+}
+
+otelcol.receiver.otlp "default" {
+	grpc { endpoint = "0.0.0.0:4317" }
+	http { endpoint = "0.0.0.0:4318" }
+
+	output {
+		metrics = [otelcol.processor.resourcedetection.default.input]
+		logs    = [otelcol.processor.resourcedetection.default.input]
+		traces  = [otelcol.processor.resourcedetection.default.input]
+	}
+}
+
+otelcol.processor.resourcedetection "default" {
+	detectors = ["env", "system"]
+	system {
+		hostname_sources = ["os"]
+	}
+
+	output {
+		metrics = [otelcol.processor.transform.add_resource_attributes_as_metric_attributes.input]
+		logs    = [otelcol.processor.batch.default.input]
+		traces  = [
+			otelcol.processor.batch.default.input,
+			otelcol.connector.host_info.default.input,
+		]
+	}
+}
+
+otelcol.connector.host_info "default" {
+	host_identifiers = ["host.name"]
+
+	output {
+		metrics = [otelcol.processor.batch.default.input]
+	}
+}
+
+otelcol.processor.transform "add_resource_attributes_as_metric_attributes" {
+	error_mode = "ignore"
+
+	metric_statements {
+		context    = "datapoint"
+		statements = [
+			"set(attributes[\"deployment.environment\"], resource.attributes[\"deployment.environment\"])",
+			"set(attributes[\"service.version\"], resource.attributes[\"service.version\"])",
+		]
+	}
+
+	output {
+		metrics = [otelcol.processor.batch.default.input]
+	}
+}
+
+otelcol.processor.batch "default" {
+	output {
+        metrics = [otelcol.exporter.prometheus.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+        endpoint = "tempo:4317"
+		tls { insecure = true }
+    }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+pyroscope.write "default" {
+  endpoint { url = "pyroscope:4040" }
+}
